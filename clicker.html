@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>iRocks K71M 舒壓體驗</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+      margin: 0;
+      padding: 0;
+    }
+    body {
+      width: 100vw;
+      height: 100vh;
+      background-color: #1c1c1c;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: system-ui, -apple-system, sans-serif;
+      overflow: hidden;
+      cursor: pointer;
+    }
+    
+    /* 主標題橢圓形看板 */
+    .counter-board {
+      background: rgba(0, 0, 0, 0.7);
+      padding: 18px 45px;
+      border-radius: 50px;
+      color: #00ffcc;
+      font-size: 2.8rem;
+      font-weight: 800;
+      letter-spacing: 2px;
+      box-shadow: 0 0 25px rgba(0, 255, 204, 0.4);
+      backdrop-filter: blur(8px);
+      border: 1.5px solid rgba(0, 255, 204, 0.3);
+      transition: transform 0.05s ease, box-shadow 0.05s ease;
+      z-index: 2;
+    }
+
+    body:active .counter-board {
+      transform: scale(0.96);
+      box-shadow: 0 0 35px rgba(0, 255, 204, 0.7);
+    }
+
+    /* 鼠標點擊擴散光環特效 */
+    .click-ripple {
+      position: absolute;
+      border-radius: 50%;
+      border: 2px solid #00ffcc;
+      pointer-events: none;
+      transform: translate(-50%, -50%) scale(0);
+      animation: ripple 0.4s ease-out forwards;
+      z-index: 1;
+    }
+
+    @keyframes ripple {
+      0% {
+        width: 10px;
+        height: 10px;
+        opacity: 1;
+        box-shadow: 0 0 10px #00ffcc;
+      }
+      100% {
+        width: 80px;
+        height: 80px;
+        opacity: 0;
+        box-shadow: 0 0 25px #00ffcc;
+      }
+    }
+
+    /* 鼠標點擊噴射粒子特效 */
+    .spark-particle {
+      position: absolute;
+      pointer-events: none;
+      border-radius: 50%;
+      background: #00ffcc;
+      box-shadow: 0 0 8px #00ffcc, 0 0 12px #ffffff;
+      animation: spark 0.5s ease-out forwards;
+      z-index: 1;
+    }
+
+    @keyframes spark {
+      0% {
+        transform: translate(-50%, -50%) scale(1);
+        opacity: 1;
+      }
+      100% {
+        transform: translate(calc(-50% + var(--dx)), calc(-50% + var(--dy))) scale(0);
+        opacity: 0;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="counter-board">
+    點擊次數：<span id="counter">0</span>
+  </div>
+
+  <script>
+    const counterDisplay = document.getElementById('counter');
+    let count = 0;
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+    // iRocks K71M 機械軸音效
+    function playK71MSound() {
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume();
+      }
+
+      const now = audioCtx.currentTime;
+      const pitchOffset = (Math.random() - 0.5) * 40;
+
+      // 1. 軸體觸底撞擊聲
+      const osc = audioCtx.createOscillator();
+      const oscGain = audioCtx.createGain();
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(450 + pitchOffset, now);
+      osc.frequency.exponentialRampToValueAtTime(90, now + 0.025);
+
+      oscGain.gain.setValueAtTime(0.6, now);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + 0.025);
+
+      osc.connect(oscGain);
+      oscGain.connect(audioCtx.destination);
+
+      // 2. 鍵帽塑膠撞擊聲
+      const bufferSize = audioCtx.sampleRate * 0.006;
+      const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+      const data = buffer.getChannelData(0);
+      for (let i = 0; i < bufferSize; i++) {
+        data[i] = Math.random() * 2 - 1;
+      }
+
+      const noise = audioCtx.createBufferSource();
+      noise.buffer = buffer;
+
+      const filter = audioCtx.createBiquadFilter();
+      filter.type = 'bandpass';
+      filter.frequency.value = 3800 + pitchOffset;
+
+      const noiseGain = audioCtx.createGain();
+      noiseGain.gain.setValueAtTime(0.4, now);
+      noiseGain.gain.exponentialRampToValueAtTime(0.001, now + 0.006);
+
+      noise.connect(filter);
+      filter.connect(noiseGain);
+      noiseGain.connect(audioCtx.destination);
+
+      osc.start(now);
+      noise.start(now);
+      osc.stop(now + 0.025);
+    }
+
+    // 鼠標點擊特效生成
+    function createClickEffects(x, y) {
+      // 1. 生成擴散波紋
+      const ripple = document.createElement('div');
+      ripple.className = 'click-ripple';
+      ripple.style.left = x + 'px';
+      ripple.style.top = y + 'px';
+      document.body.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 400);
+
+      // 2. 生成發光星光粒子
+      for (let i = 0; i < 8; i++) {
+        const particle = document.createElement('div');
+        particle.className = 'spark-particle';
+        
+        const size = Math.random() * 6 + 4;
+        particle.style.width = size + 'px';
+        particle.style.height = size + 'px';
+        particle.style.left = x + 'px';
+        particle.style.top = y + 'px';
+
+        const angle = Math.random() * Math.PI * 2;
+        const distance = Math.random() * 60 + 20;
+        particle.style.setProperty('--dx', `${Math.cos(angle) * distance}px`);
+        particle.style.setProperty('--dy', `${Math.sin(angle) * distance}px`);
+
+        document.body.appendChild(particle);
+        setTimeout(() => particle.remove(), 500);
+      }
+    }
+
+    // 全螢幕點擊事件
+    window.addEventListener('pointerdown', (e) => {
+      count++;
+      counterDisplay.textContent = count;
+      playK71MSound();
+      createClickEffects(e.clientX, e.clientY);
+    });
+  </script>
+</body>
+</html>
